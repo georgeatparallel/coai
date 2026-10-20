@@ -64,6 +64,7 @@ type mailState struct {
 }
 
 type SearchState struct {
+	Provider   string   `json:"provider" mapstructure:"provider"`
 	Endpoint   string   `json:"endpoint" mapstructure:"endpoint"`
 	Crop       bool     `json:"crop" mapstructure:"crop"`
 	CropLen    int      `json:"crop_len" mapstructure:"croplen"`
@@ -95,6 +96,8 @@ func NewSystemConfig() *SystemConfig {
 	if err := viper.UnmarshalKey("system", conf); err != nil {
 		panic(err)
 	}
+	// AutomaticEnv must also work for saved configs predating this field.
+	conf.Search.Provider = viper.GetString("system.search.provider")
 
 	conf.Load()
 	return conf
@@ -122,6 +125,7 @@ func (c *SystemConfig) Load() {
 	}
 
 	globals.SearchEndpoint = c.Search.Endpoint
+	globals.SearchProvider = c.Search.Provider
 	globals.SearchCrop = c.Search.Crop
 	globals.SearchCropLength = c.GetSearchCropLength()
 	globals.SearchEngines = c.GetSearchEngines()

@@ -3,6 +3,7 @@ package web
 import (
 	"chat/globals"
 	"chat/utils"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -78,7 +79,39 @@ func createSearXNGRequest(query string) (*SearXNGResponse, error) {
 }
 
 func GenerateSearchResult(q string) (string, error) {
-	res, err := createSearXNGRequest(q)
+	return GenerateSearchResultContext(context.Background(), q)
+}
+
+func GenerateSearchResultContext(ctx context.Context, q string) (string, error) {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return "", errors.New("search query is empty")
+	}
+	provider := strings.ToLower(strings.TrimSpace(globals.SearchProvider))
+	if provider == "" || provider == "auto" {
+		if strings.TrimSpace(globals.SearchEndpoint) != "" {
+			provider = "searxng"
+		} else {
+			provider = "parallel"
+		}
+	}
+	var content string
+	var err error
+	switch provider {
+	case "parallel":
+		content, err = parallelSearch(ctx, q)
+	case "searxng":
+		if strings.TrimSpace(globals.SearchEndpoint) == "" {
+			return "", errors.New("SearXNG requires a search endpoint")
+		}
+		var res *SearXNGResponse
+		res, err = createSearXNGRequest(q)
+		if err == nil {
+			content = formatResponse(res)
+		}
+	default:
+		return "", fmt.Errorf("unknown search provider: %s", provider)
+	}
 	if err != nil {
 		globals.Warn(fmt.Sprintf("[web] failed to get search result: %s (query: %s)", err.Error(), utils.Extract(q, 20, "...")))
 
@@ -86,7 +119,6 @@ func GenerateSearchResult(q string) (string, error) {
 		return content, errors.New(content)
 	}
 
-	content := formatResponse(res)
 	globals.Debug(fmt.Sprintf("[web] search result: %s (query: %s)", utils.Extract(content, 50, "..."), q))
 
 	if globals.SearchCrop {
@@ -102,7 +134,7 @@ func TestSearch(c *gin.Context) {
 
 	fmt.Println(query)
 
-	res, err := GenerateSearchResult(query)
+	res, err := GenerateSearchResultContext(c.Request.Context(), query)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": false,
