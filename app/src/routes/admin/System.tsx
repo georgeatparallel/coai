@@ -1011,7 +1011,7 @@ function Search({ data, dispatch, onChange }: CompProps<SearchState>) {
                     <Loader2 className={`h-4 w-4 animate-spin`} />
                   ) : (
                     <>
-                      <p className={`text-sm mb-1`}>SearXNG Result</p>
+                      <p className={`text-sm mb-1`}>{t("admin.system.searchResult")}</p>
                       <Textarea value={searchResult} rows={5} readOnly />
                     </>
                   )}

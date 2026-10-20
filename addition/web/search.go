@@ -52,24 +52,24 @@ func formatResponse(data *SearXNGResponse) string {
 	return strings.Join(res, "\n")
 }
 
-func createURLParams(query string) string {
+func createURLParams(query string, settings globals.SearchSettings) string {
 	params := url.Values{}
 
 	params.Add("q", query)
 	params.Add("format", "json")
-	params.Add("safesearch", strconv.Itoa(globals.SearchSafeSearch))
-	if len(globals.SearchEngines) > 0 {
-		params.Add("engines", globals.SearchEngines)
+	params.Add("safesearch", strconv.Itoa(settings.SafeSearch))
+	if len(settings.Engines) > 0 {
+		params.Add("engines", settings.Engines)
 	}
-	if len(globals.SearchImageProxy) > 0 {
-		params.Add("image_proxy", globals.SearchImageProxy)
+	if len(settings.ImageProxy) > 0 {
+		params.Add("image_proxy", settings.ImageProxy)
 	}
 
-	return fmt.Sprintf("%s?%s", globals.SearchEndpoint, params.Encode())
+	return fmt.Sprintf("%s?%s", settings.Endpoint, params.Encode())
 }
 
-func createSearXNGRequest(query string) (*SearXNGResponse, error) {
-	data, err := utils.Get(createURLParams(query), nil)
+func createSearXNGRequest(query string, settings globals.SearchSettings) (*SearXNGResponse, error) {
+	data, err := utils.Get(createURLParams(query, settings), nil)
 
 	if err != nil {
 		return nil, err
@@ -87,9 +87,10 @@ func GenerateSearchResultContext(ctx context.Context, q string) (string, error) 
 	if q == "" {
 		return "", errors.New("search query is empty")
 	}
-	provider := strings.ToLower(strings.TrimSpace(globals.SearchProvider))
+	settings := globals.GetSearchSettings()
+	provider := strings.ToLower(strings.TrimSpace(settings.Provider))
 	if provider == "" || provider == "auto" {
-		if strings.TrimSpace(globals.SearchEndpoint) != "" {
+		if strings.TrimSpace(settings.Endpoint) != "" {
 			provider = "searxng"
 		} else {
 			provider = "parallel"
@@ -101,11 +102,11 @@ func GenerateSearchResultContext(ctx context.Context, q string) (string, error) 
 	case "parallel":
 		content, err = parallelSearch(ctx, q)
 	case "searxng":
-		if strings.TrimSpace(globals.SearchEndpoint) == "" {
+		if strings.TrimSpace(settings.Endpoint) == "" {
 			return "", errors.New("SearXNG requires a search endpoint")
 		}
 		var res *SearXNGResponse
-		res, err = createSearXNGRequest(q)
+		res, err = createSearXNGRequest(q, settings)
 		if err == nil {
 			content = formatResponse(res)
 		}
@@ -121,9 +122,9 @@ func GenerateSearchResultContext(ctx context.Context, q string) (string, error) 
 
 	globals.Debug(fmt.Sprintf("[web] search result: %s (query: %s)", utils.Extract(content, 50, "..."), q))
 
-	if globals.SearchCrop {
-		globals.Debug(fmt.Sprintf("[web] crop search result length %d to %d max", len(content), globals.SearchCropLength))
-		return utils.Extract(content, globals.SearchCropLength, "..."), nil
+	if settings.Crop {
+		globals.Debug(fmt.Sprintf("[web] crop search result length %d to %d max", len(content), settings.CropLength))
+		return utils.Extract(content, settings.CropLength, "..."), nil
 	}
 	return content, nil
 }

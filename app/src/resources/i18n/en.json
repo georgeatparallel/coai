@@ -640,6 +640,7 @@
       "mailPort": "SMTP Port",
       "mailUser": "Username",
       "mailPass": "Password",
+      "searchResult": "Search result",
       "searchProvider": "Search provider",
       "searchAutomatic": "Automatic",
       "searchProviderTip": "Automatic uses a configured SearXNG endpoint, or Parallel Search MCP when the endpoint is empty. Parallel provides free search without an account or API key. Engine, safe-search and image-proxy settings apply only to SearXNG.",

@@ -4,6 +4,7 @@ import (
 	"chat/globals"
 	"chat/utils"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -124,13 +125,19 @@ func (c *SystemConfig) Load() {
 		c.General.PWAManifest = utils.ReadPWAManifest()
 	}
 
-	globals.SearchEndpoint = c.Search.Endpoint
-	globals.SearchProvider = c.Search.Provider
-	globals.SearchCrop = c.Search.Crop
-	globals.SearchCropLength = c.GetSearchCropLength()
-	globals.SearchEngines = c.GetSearchEngines()
-	globals.SearchImageProxy = c.GetImageProxy()
-	globals.SearchSafeSearch = c.Search.SafeSearch
+	c.loadSearchSettings()
+}
+
+func (c *SystemConfig) loadSearchSettings() {
+	provider := c.Search.Provider
+	if override := os.Getenv("SYSTEM_SEARCH_PROVIDER"); override != "" {
+		provider = override
+	}
+	globals.SetSearchSettings(globals.SearchSettings{
+		Provider: provider, Endpoint: c.Search.Endpoint, Crop: c.Search.Crop,
+		CropLength: c.GetSearchCropLength(), Engines: c.GetSearchEngines(),
+		ImageProxy: c.GetImageProxy(), SafeSearch: c.Search.SafeSearch,
+	})
 }
 
 func (c *SystemConfig) SaveConfig() error {
@@ -165,7 +172,11 @@ func (c *SystemConfig) UpdateConfig(data *SystemConfig) error {
 	utils.ApplySeo(c.General.Title, c.General.Logo)
 	utils.ApplyPWAManifest(c.General.PWAManifest)
 
-	return c.SaveConfig()
+	if err := c.SaveConfig(); err != nil {
+		return err
+	}
+	c.loadSearchSettings()
+	return nil
 }
 
 func (c *SystemConfig) GetInitialQuota() float64 {
